@@ -1,35 +1,37 @@
-CC = /opt/homebrew/bin/arm-none-eabi-gcc
-MACH = cortex-m4
+# Toolchain
+CC = arm-none-eabi-gcc
+AS = arm-none-eabi-as
+LD = arm-none-eabi-ld
+OBJCOPY = arm-none-eabi-objcopy
+OBJDUMP = arm-none-eabi-objdump
+SIZE = arm-none-eabi-size
 
-# Compiler flags
-CFLAGS= -c -mcpu=$(MACH) -mthumb -mfloat-abi=soft -std=gnu11 -Wall -O0
-LDFLAGS= -mcpu=$(MACH) -mthumb -mfloat-abi=soft --specs=nano.specs -T linker.ld -Wl,-Map=final.map
-LDFLAGS_SH= -mcpu=$(MACH) -mthumb -mfloat-abi=soft --specs=rdimon.specs -T linker.ld -Wl,-Map=final.map
+# File names
+TARGET = program
+STARTUP_FILE = startup.c
+LINKER_SCRIPT = linker.ld
+MAIN_FILE = main.s
 
-# Targets
-all: final.elf
+# Build rules
+all: $(TARGET).elf
 
-semi: final_sh.elf
+$(TARGET).elf: $(MAIN_FILE) $(STARTUP_FILE) $(LINKER_SCRIPT)
+	$(CC) -mcpu=cortex-m4 -mthumb -nostdlib -T$(LINKER_SCRIPT) -o $(TARGET).elf $(MAIN_FILE) $(STARTUP_FILE) -lgcc
 
-# Assembly file compilation
-main.o: main.s
-	$(CC) $(CFLAGS) -o $@ $^
+# Convert ELF to BIN (optional)
+$(TARGET).bin: $(TARGET).elf
+	$(OBJCOPY) -O binary $(TARGET).elf $(TARGET).bin
 
-startup.o: startup.s
-	$(CC) $(CFLAGS) -o $@ $^
+# Convert ELF to HEX (optional)
+$(TARGET).hex: $(TARGET).elf
+	$(OBJCOPY) -O ihex $(TARGET).elf $(TARGET).hex
 
-# Linking final binary
-final.elf: main.o startup.o 
-	$(CC) $(LDFLAGS) -o $@ $^
+# Display size information
+size: $(TARGET).elf
+	$(SIZE) $(TARGET).elf
 
-# Linking semihosting binary
-final_sh.elf: main.o startup.o 
-	$(CC) $(LDFLAGS_SH) -o $@ $^
-
-# Clean generated files
+# Clean up
 clean:
-	rm -rf *.o *.elf final.map
+	rm -f $(TARGET).elf $(TARGET).bin $(TARGET).hex
 
-# Load target to flash the binary
-load: final.elf
-	/opt/local/bin/st-flash write final.elf 0x8000000
+.PHONY: all clean size

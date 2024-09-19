@@ -39,8 +39,6 @@
 .thumb
 
 	.section .text
-
-
 	.globl main
 
 
